@@ -41,7 +41,7 @@ export const ProductTableView: React.FC<ProductTableViewProps> = ({
           <thead className="bg-yellow-50/80 border-b border-yellow-200 text-slate-700 uppercase tracking-wider font-bold text-[11px]">
             <tr>
               <th className="py-3 px-4">Barang</th>
-              <th className="py-3 px-4">SKU / Kategori</th>
+              <th className="py-3 px-4">Kategori</th>
               <th className="py-3 px-4">Lokasi Rak</th>
               <th className="py-3 px-4">Varian & Stok Fisik</th>
               <th className="py-3 px-4">Total Stok (Pcs & Lusin)</th>
@@ -75,26 +75,28 @@ export const ProductTableView: React.FC<ProductTableViewProps> = ({
                     </div>
                   </td>
 
-                  {/* SKU & Category */}
+                  {/* Category & optional SKU */}
                   <td className="py-3 px-4 whitespace-nowrap">
-                    {product.sku && product.sku.trim() !== '' ? (
-                      <div className="font-mono font-bold text-slate-900">{product.sku}</div>
-                    ) : (
-                      <div className="text-slate-400 text-[11px] italic">Tanpa SKU</div>
-                    )}
                     {product.category && (
-                      <span className="inline-block mt-0.5 text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                      <span className="inline-block text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
                         {product.category}
                       </span>
+                    )}
+                    {product.sku && product.sku.trim() !== '' && (
+                      <div className="font-mono text-[10px] text-slate-500 mt-0.5">{product.sku}</div>
                     )}
                   </td>
 
                   {/* Location */}
                   <td className="py-3 px-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-slate-600">
-                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>{product.location}</span>
-                    </div>
+                    {product.location ? (
+                      <div className="flex items-center gap-1 text-slate-600">
+                        <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>{product.location}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-[11px]">-</span>
+                    )}
                   </td>
 
                   {/* Variants */}

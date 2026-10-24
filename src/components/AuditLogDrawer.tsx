@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../context/InventoryContext.tsx';
 import { StockLog, StockChangeType } from '../types/inventory.ts';
+import { exportAuditLogsToCSV } from '../utils/csvExport.ts';
 import { 
   X, 
   Download, 
@@ -51,43 +52,7 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({ isOpen, onClose 
   });
 
   const exportToCSV = () => {
-    if (stockLogs.length === 0) return;
-
-    const headers = [
-      'Waktu',
-      'Nama Barang',
-      'Varian',
-      'Tipe Perubahan',
-      'Perubahan (Pcs)',
-      'Stok Sebelum',
-      'Stok Sesudah',
-      'Keterangan',
-      'Perangkat',
-      'Operator',
-    ];
-
-    const rows = filteredLogs.map((log) => [
-      `"${new Date(log.timestamp).toLocaleString('id-ID')}"`,
-      `"${log.productName.replace(/"/g, '""')}"`,
-      `"${log.variantDescription.replace(/"/g, '""')}"`,
-      `"${log.changeType}"`,
-      log.delta,
-      log.previousStock,
-      log.newStock,
-      `"${(log.reason || '').replace(/"/g, '""')}"`,
-      `"${log.deviceName.replace(/"/g, '""')}"`,
-      `"${log.operatorName.replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `STZ_Stok_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportAuditLogsToCSV(filteredLogs);
   };
 
   const getChangeBadge = (type: StockChangeType) => {

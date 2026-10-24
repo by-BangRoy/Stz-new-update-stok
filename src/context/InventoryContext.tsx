@@ -641,10 +641,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     refreshData();
     connectWebSocket();
 
-    // Fallback sync polling every 8s ensures data stays 100% synchronized across all devices
+    // Fallback sync polling every 4s ensures data stays 100% synchronized across all devices
     const pollInterval = setInterval(() => {
       refreshData();
-    }, 8000);
+    }, 4000);
 
     // Auto-reconnect & resync immediately when user wakes up screen, unlocks phone, or refocuses tab
     const handleWakeOrFocus = () => {
@@ -656,6 +656,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           socketRef.current.readyState === WebSocket.CLOSING
         ) {
           connectWebSocket();
+        } else if (socketRef.current.readyState === WebSocket.OPEN) {
+          try {
+            socketRef.current.send(JSON.stringify({ type: 'PING' }));
+          } catch {
+            connectWebSocket();
+          }
         }
       }
     };
@@ -720,6 +726,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const data = await res.json();
         if (data.settings) {
           setSettings(data.settings);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('stz_cached_settings', JSON.stringify(data.settings));
+          }
         }
         return true;
       }

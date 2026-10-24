@@ -9,8 +9,10 @@ import {
   Search, 
   Save, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
+import { exportInventoryToCSV } from '../utils/csvExport.ts';
 
 interface StockOpnameModalProps {
   isOpen: boolean;
@@ -140,7 +142,7 @@ export const StockOpnameModal: React.FC<StockOpnameModalProps> = ({ isOpen, onCl
             />
           </div>
 
-          <div className="flex items-center gap-3 text-xs w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs w-full sm:w-auto justify-end">
             <span className="text-slate-500">
               Total Varian: <strong className="text-slate-800">{entries.length}</strong>
             </span>
@@ -150,6 +152,15 @@ export const StockOpnameModal: React.FC<StockOpnameModalProps> = ({ isOpen, onCl
             }`}>
               {changedEntries.length} Selisih Ditemukan
             </span>
+            <button
+              type="button"
+              onClick={() => exportInventoryToCSV(products, 'Opname')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 hover:bg-yellow-200 text-amber-900 border border-yellow-300 rounded-lg text-xs font-bold transition-colors ml-1"
+              title="Unduh Lembar Stok Opname (.CSV Excel)"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh CSV</span>
+            </button>
           </div>
         </div>
 

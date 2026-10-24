@@ -105,7 +105,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   securityPin: '000000',
   pinRequired: true,
-  autoLockMinutes: 30,
+  autoLockMinutes: 0,
   soundEnabled: true,
   defaultMinStockAlert: 3,
   enableStockNotifications: true,

@@ -24,7 +24,7 @@ if (!fs.existsSync(DATA_DIR)) {
 export const DEFAULT_SETTINGS: AppSettings = {
   securityPin: '000000',
   pinRequired: true,
-  autoLockMinutes: 30,
+  autoLockMinutes: 0,
   soundEnabled: true,
   defaultMinStockAlert: 3,
   enableStockNotifications: true,
@@ -51,12 +51,12 @@ function loadData() {
       const raw = fs.readFileSync(INVENTORY_FILE, 'utf-8');
       products = JSON.parse(raw);
     } else {
-      products = JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
+      products = [];
       saveInventory();
     }
   } catch (err) {
-    console.error('Error loading inventory file, fallback to initial data:', err);
-    products = JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
+    console.error('Error loading inventory file:', err);
+    products = [];
   }
 
   try {
@@ -64,41 +64,7 @@ function loadData() {
       const raw = fs.readFileSync(LOGS_FILE, 'utf-8');
       stockLogs = JSON.parse(raw);
     } else {
-      // Seed initial sample logs
-      stockLogs = [
-        {
-          id: 'log-seed-1',
-          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          productId: 'prod-1',
-          productName: 'Gamis Silk Premium Zhafira',
-          variantId: 'var-1-2',
-          variantDescription: 'M / Sage Green',
-          changeType: 'sale',
-          delta: -1,
-          previousStock: 13,
-          newStock: 12,
-          reason: 'Transaksi Kasir POS 1',
-          deviceId: 'dev-pos-1',
-          deviceName: 'Tablet Kasir Depan',
-          operatorName: 'Siti (Kasir)',
-        },
-        {
-          id: 'log-seed-2',
-          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-          productId: 'prod-3',
-          productName: 'Pashmina Ceruty Babydoll Armani',
-          variantId: 'var-3-1',
-          variantDescription: 'All Size / Jet Black',
-          changeType: 'restock',
-          delta: 15,
-          previousStock: 10,
-          newStock: 25,
-          reason: 'Kiriman Konveksi Pusat Batch #82',
-          deviceId: 'dev-wh-1',
-          deviceName: 'HP Android Gudang',
-          operatorName: 'Rian (Gudang)',
-        },
-      ];
+      stockLogs = [];
       saveLogs();
     }
   } catch (err) {
@@ -110,30 +76,16 @@ function loadData() {
     if (fs.existsSync(SETTINGS_FILE)) {
       const raw = fs.readFileSync(SETTINGS_FILE, 'utf-8');
       const loaded = JSON.parse(raw);
-      // If previous default PIN was 1234, update to 000000 as requested
-      if (loaded.securityPin === '1234') {
-        loaded.securityPin = '000000';
-      }
       appSettings = {
         ...DEFAULT_SETTINGS,
         ...loaded,
+        securityPin: loaded.securityPin || '000000',
+        pinRequired: true,
         profile: {
           ...DEFAULT_SETTINGS.profile,
           ...(loaded.profile || {}),
         },
       };
-      // If profile had the demo values, empty them as requested
-      if (appSettings.profile.storeName === 'STZ Fashion Boutique') {
-        appSettings.profile = {
-          storeName: '',
-          storeBranch: '',
-          tagline: '',
-          phone: '',
-          address: '',
-          ownerName: '',
-          socialMedia: '',
-        };
-      }
       saveSettings();
     } else {
       appSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
@@ -176,6 +128,15 @@ function saveLogs() {
 loadData();
 
 const app = express();
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 app.use(express.json());
 
 // Track connected devices
@@ -804,6 +765,13 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws: WebSocket, req) => {
+  const extWs = ws as any;
+  extWs.isAlive = true;
+
+  ws.on('pong', () => {
+    extWs.isAlive = true;
+  });
+
   const ip = req.socket.remoteAddress || '127.0.0.1';
   const defaultClient: ConnectedClient = {
     ws,
@@ -838,6 +806,7 @@ wss.on('connection', (ws: WebSocket, req) => {
 
   // Handle incoming messages from client
   ws.on('message', (data: string) => {
+    extWs.isAlive = true;
     try {
       const msg: RealtimeMessage = JSON.parse(data.toString());
 
@@ -869,6 +838,28 @@ wss.on('connection', (ws: WebSocket, req) => {
     connectedClients.delete(ws);
     broadcastPresence();
   });
+});
+
+// Periodic heartbeat to clean up dropped connections (e.g., mobile devices with sleep/network changes)
+const pingInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    const extWs = ws as any;
+    if (extWs.isAlive === false) {
+      connectedClients.delete(ws);
+      return ws.terminate();
+    }
+    extWs.isAlive = false;
+    try {
+      ws.ping();
+    } catch {
+      connectedClients.delete(ws);
+      ws.terminate();
+    }
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(pingInterval);
 });
 
 // Configure Vite integration for dev mode or static files for production

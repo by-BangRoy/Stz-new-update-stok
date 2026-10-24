@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../context/InventoryContext.tsx';
 import { StoreProfile, AppSettings } from '../types/inventory.ts';
+import { exportInventoryToCSV } from '../utils/csvExport.ts';
 import { 
   X, 
   Store, 
@@ -83,16 +84,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll and sync state when modal is open
   useEffect(() => {
     if (isOpen) {
+      setProfile({ ...settings.profile });
+      setPinRequired(settings.pinRequired);
+      setSoundEnabled(settings.soundEnabled);
+      setDefaultMinStock(settings.defaultMinStockAlert);
+      setEnableStockNotifications(settings.enableStockNotifications);
+      setDeviceName(currentDevice.deviceName);
+      setOperatorName(currentDevice.operatorName);
+
       const originalStyle = window.getComputedStyle(document.body).overflow;
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = originalStyle;
       };
     }
-  }, [isOpen]);
+  }, [isOpen, settings, currentDevice]);
 
   if (!isOpen) return null;
 
@@ -913,6 +922,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Muat Demo Data</span>
+                </button>
+              </div>
+
+              {/* EKSPOR STOK CSV RAPI (EXCEL) */}
+              <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-300 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-amber-950">Ekspor Rekap Stok (.CSV Excel Rapi)</h4>
+                  <p className="text-xs text-amber-900/80 mt-0.5">
+                    Unduh file CSV dengan format kolom rapi (No, Nama Barang, Kategori, Warna, Ukuran, Stok Pcs, Lusin, Batas Min, Status Stok).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => exportInventoryToCSV(products, settings.profile.storeName)}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh CSV</span>
                 </button>
               </div>
 

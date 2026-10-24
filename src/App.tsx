@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { InventoryProvider, useInventory } from './context/InventoryContext.tsx';
 import { Product } from './types/inventory.ts';
 import { Navbar } from './components/Navbar.tsx';
@@ -13,6 +13,7 @@ import { StockOpnameModal } from './components/StockOpnameModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import { PinLockScreen } from './components/PinLockScreen.tsx';
 import { RealtimeNotificationToasts } from './components/RealtimeNotificationToasts.tsx';
+import { exportInventoryToCSV, parseInventoryCSV } from './utils/csvExport.ts';
 import { 
   Search, 
   LayoutGrid, 
@@ -25,7 +26,10 @@ import {
   MapPin,
   PackageOpen,
   Plus,
-  QrCode
+  QrCode,
+  Download,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
 
 function MainDashboard() {
@@ -33,7 +37,9 @@ function MainDashboard() {
     products, 
     isAuthenticated, 
     settings,
-    lockApp
+    lockApp,
+    resetDemoData,
+    createProduct
   } = useInventory();
 
   // Dynamic category list based on existing products with manual entry support
@@ -120,6 +126,54 @@ function MainDashboard() {
   const handleOpenAdjust = (product: Product, variantId?: string) => {
     setAdjustModalProduct(product);
     setAdjustModalVariantId(variantId);
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExportCSV = () => {
+    exportInventoryToCSV(products, settings.profile.storeName || 'STZstok');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = parseInventoryCSV(text);
+      if (parsed.length === 0) {
+        alert('Format CSV tidak terbaca. Pastikan ada kolom Nama Barang/Pakaian, Warna, Ukuran, dan Stok.');
+        return;
+      }
+      for (const p of parsed) {
+        await createProduct(p);
+      }
+      alert(`Berhasil mengimpor ${parsed.length} model barang ke dalam katalog!`);
+    } catch (err: any) {
+      alert(`Gagal mengimpor file: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleLoadSampleCsv = async () => {
+    setIsImporting(true);
+    try {
+      const res = await fetch('/assets/aistudio/Stok_Inventaris_STZstok_2026-10-24_RAPI_0f8bd3c6.csv');
+      if (!res.ok) throw new Error('File CSV tidak ditemukan');
+      const text = await res.text();
+      const parsed = parseInventoryCSV(text);
+      for (const p of parsed) {
+        await createProduct(p);
+      }
+      alert(`Berhasil mengimpor ${parsed.length} model busana (HINATA & KUREA) dari file CSV!`);
+    } catch (err: any) {
+      alert(`Gagal memuat file: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleOpenEdit = (product: Product) => {
@@ -257,6 +311,37 @@ function MainDashboard() {
                   <Table className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Ekspor CSV Button */}
+              <button
+                onClick={handleExportCSV}
+                disabled={products.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:from-amber-600 active:to-amber-700 disabled:opacity-40 disabled:pointer-events-none text-slate-950 rounded-xl text-xs font-extrabold transition-all shadow-sm active:scale-95 shrink-0"
+                title="Unduh File CSV Rapi (Kompatibel Excel, Google Sheets, WPS)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Ekspor CSV</span>
+                <span className="xs:hidden">CSV</span>
+              </button>
+
+              {/* Impor CSV Button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:py-2 bg-yellow-100/90 hover:bg-yellow-200 active:bg-yellow-300 border border-yellow-300 text-amber-950 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0"
+                title="Impor Data dari File CSV"
+              >
+                <Upload className="w-3.5 h-3.5 text-amber-800" />
+                <span className="hidden md:inline">{isImporting ? 'Mengimpor...' : 'Impor CSV'}</span>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </div>
           </div>
 
@@ -319,7 +404,58 @@ function MainDashboard() {
         </div>
 
         {/* Catalog Items Display */}
-        {sortedProducts.length === 0 ? (
+        {products.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-yellow-200/90 p-8 sm:p-14 text-center shadow-sm max-w-2xl mx-auto my-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center mx-auto mb-4 text-amber-500 shadow-sm">
+              <PackageOpen className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">
+              Katalog Barang Masih Kosong Seperti Baru
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+              Mulai kelola stok tokomu dengan menambahkan barang pertama. Seluruh perubahan stok fisik akan langsung tersinkron otomatis real-time ke semua HP dan komputer kasir.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center items-center gap-2.5">
+              <button
+                onClick={handleOpenAdd}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs sm:text-sm font-extrabold rounded-xl transition-all shadow-md shadow-amber-500/25 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>+ Tambah Barang Manual</span>
+              </button>
+
+              <button
+                onClick={handleLoadSampleCsv}
+                disabled={isImporting}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
+                title="Impor langsung dari file Stok_Inventaris_STZstok_RAPI.csv"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>{isImporting ? 'Mengimpor...' : 'Isi dari Stok CSV Rapi (HINATA & KUREA)'}</span>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+              >
+                <Upload className="w-4 h-4 text-amber-700" />
+                <span>Pilih File CSV Lain</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (window.confirm('Muat data contoh barang butik untuk latihan?')) {
+                    resetDemoData();
+                  }
+                }}
+                className="px-3 py-2.5 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Muat Demo Butik
+              </button>
+            </div>
+          </div>
+        ) : sortedProducts.length === 0 ? (
           <div className="bg-white rounded-2xl border border-yellow-200 p-8 sm:p-12 text-center shadow-sm">
             <PackageOpen className="w-12 h-12 text-amber-400/80 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-800">Tidak ada produk barang yang sesuai</h3>

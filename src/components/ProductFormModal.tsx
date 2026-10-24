@@ -28,9 +28,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [name, setName] = useState(product?.name || '');
   // Kategori dikosongkan secara default agar pengguna bisa input manual
   const [category, setCategory] = useState(product?.category || '');
-  // SKU dibuat manual sepenuhnya (tidak ada kode acak otomatis lagi)
-  const [sku, setSku] = useState(product?.sku || '');
-  const [location, setLocation] = useState(product?.location || 'Gudang Utama');
   const [imageUrl, setImageUrl] = useState(product?.imageUrl || DEFAULT_IMAGE);
   const [description, setDescription] = useState(product?.description || '');
 
@@ -118,9 +115,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
     const productPayload = {
       name: name.trim(),
-      sku: sku.trim(),
+      sku: product?.sku || '',
       category: category.trim() || 'Umum',
-      location: location.trim() || 'Gudang Utama',
+      location: product?.location || '',
       imageUrl: imageUrl.trim() || DEFAULT_IMAGE,
       description: description.trim(),
       variants: sanitizedVariants,
@@ -182,7 +179,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
-          {/* Basic Details: Nama Barang, Kategori, SKU Manual (Opsional), Lokasi */}
+          {/* Basic Details: Nama Barang & Kategori */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -207,38 +204,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="Input manual kategori..."
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Kode / SKU Barang
-                </label>
-                <span className="text-[10px] font-semibold text-slate-400">Opsional (Manual)</span>
-              </div>
-              <input
-                type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="Kosongkan jika tidak ada kode SKU"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Tidak lagi dibuat otomatis. Kosongkan jika tidak ingin memakai kode SKU.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Lokasi Rak / Etalase
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Contoh: Rak Depan A-1, Gudang Utama"
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
               />
             </div>
